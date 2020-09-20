@@ -2,6 +2,7 @@ import discord
 import asyncio
 
 from TempVoiceChat import TempVoiceChat
+from ChatJanitor import ChatJanitor
 
 class IKUBot(discord.Client):
     def __init__(self):
@@ -11,7 +12,8 @@ class IKUBot(discord.Client):
     async def on_ready(self):
         print(f'Connected. Username: {self.user.name} | ID: {self.user.id}')
         self.features = [
-            TempVoiceChat(self)
+            TempVoiceChat(self),
+            ChatJanitor(self)
         ]
         for feature in self.features:
             await feature.on_ready()
