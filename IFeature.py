@@ -3,7 +3,6 @@ import threading
 class IFeature:
     def __init__(self, client):
         self.client = client
-        self.lock = threading.Lock()
 
     async def cleanup(self):
         pass

@@ -3,6 +3,7 @@ import asyncio
 
 from TempVoiceChat import TempVoiceChat
 from ChatJanitor import ChatJanitor
+from AudioPlayer import AudioPlayer
 
 class IKUBot(discord.Client):
     def __init__(self):
@@ -11,9 +12,11 @@ class IKUBot(discord.Client):
 
     async def on_ready(self):
         print(f'Connected. Username: {self.user.name} | ID: {self.user.id}')
+        # TODO: Make this better
         self.features = [
             TempVoiceChat(self),
-            ChatJanitor(self)
+            ChatJanitor(self),
+            AudioPlayer(self)
         ]
         for feature in self.features:
             await feature.on_ready()
@@ -25,17 +28,14 @@ class IKUBot(discord.Client):
             await feature.on_message(message)
 
     async def on_reaction_add(self, reaction, user):
-        #print(f"Reaction {reaction} from {user}")
         for feature in self.features:
             await feature.on_reaction_add(reaction, user)
 
     async def on_reaction_remove(self, reaction, user):
-        #print(f"Reaction removed {reaction} from {user}")
         for feature in self.features:
             await feature.on_reaction_remove(reaction, user)
 
     async def on_voice_state_update(self, member, before, after):
-        #print(f"{member} went from {before} to {after}")
         for feature in self.features:
             await feature.on_voice_state_update(member, before, after)
 

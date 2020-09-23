@@ -11,17 +11,24 @@ class ChatJanitor(IFeature):
                 'permissions' : [ 'manage_messages' ],
                 'parameters' : 1,
                 'func' : self.purge
-            }
+            },
         }
 
     async def on_message(self, message):
         msg = message.content.split(' ')
         if msg[0] in self.cmds:
             cmd = self.cmds[msg[0]]
-            if not all(getattr(message.author.permissions_in(message.channel), perm) for perm in cmd['permissions']):
+            if 'permissions' in cmd and not all(getattr(message.author.permissions_in(message.channel), perm) for perm in cmd['permissions']):
                 await message.author.send("No permissions")
                 await message.delete()
                 return
+            
+            if 'roles' in cmd:
+                roles = filter(lambda role: role.name in cmd['roles'], message.author.roles)
+                if not all(role.name in cmd['roles'] for role in roles):
+                    await message.author.send("No role")
+                    await message.delete()
+                    return
 
             if 'parameters' in cmd:
                 if type(cmd['parameters']) is int:
