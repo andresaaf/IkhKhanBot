@@ -9,6 +9,7 @@ class IKUBot(discord.Client):
     def __init__(self):
         super().__init__()
         self.features = []
+        
 
     async def on_ready(self):
         print(f'Connected. Username: {self.user.name} | ID: {self.user.id}')

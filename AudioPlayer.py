@@ -14,7 +14,6 @@ class AudioPlayer(IFeature):
     async def on_message(self, message):
         pass
 
-
     class Song:
         pass
 

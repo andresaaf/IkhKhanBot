@@ -12,6 +12,11 @@ class ChatJanitor(IFeature):
                 'parameters' : 1,
                 'func' : self.purge
             },
+            '.reactw' : {
+                'usage' : '.reactw <word> <prev_msg=1>',
+                'parameters' : { 'min' : 1, 'max' : 2 },
+                'func' : self.reactw
+            },
         }
 
     async def on_message(self, message):
@@ -52,3 +57,24 @@ class ChatJanitor(IFeature):
             await message.delete()
             return
         await message.channel.purge(limit=lines+1)
+
+    async def reactw(self, message, msg):
+        if not all(c.upper() >= 'A' and c.upper() <= 'Z' for c in msg[0]):
+            await message.author.send(f"Word has to be [A-Z]+")
+            await message.delete()
+            return
+        msg_no = 1
+        if len(msg) == 2:
+            try:
+                msg_no = int(msg[1])
+            except:
+                pass
+        history = await message.channel.history(limit=msg_no+1).flatten()
+        if len(history) <= 1:
+            await message.delete()
+            return
+        await message.delete()
+        react_msg = history[msg_no]
+        A = ord('\U0001F1E6')
+        for char in msg[0]:
+            await react_msg.add_reaction(chr(A + (ord(char.upper()) - ord('A'))))
