@@ -1,5 +1,14 @@
 from IFeature import IFeature
 import discord
+from itertools import zip_longest
+
+class OptionalArg:
+    def __init__(self, T, default):
+        self.T = T
+        self.default = default
+
+    def __call__(self, arg):
+        return self.default if arg is None else self.T(arg)
 
 class ChatJanitor(IFeature):
     def __init__(self, *args, **kwargs):
@@ -7,14 +16,14 @@ class ChatJanitor(IFeature):
 
         self.cmds = {
             '.purge' : {
-                'usage' : '.purge <no_lines>',
+                'usage' : '.purge [no_lines=1]',
                 'permissions' : [ 'manage_messages' ],
-                'parameters' : 1,
+                'parameters' : [ OptionalArg(int, 1) ],
                 'func' : self.purge
             },
             '.reactw' : {
-                'usage' : '.reactw <word> <prev_msg=1>',
-                'parameters' : { 'min' : 1, 'max' : 2 },
+                'usage' : '.reactw <word> [prev_msg=1]',
+                'parameters' : [ str, OptionalArg(int, 1) ],
                 'func' : self.reactw
             },
         }
@@ -31,50 +40,38 @@ class ChatJanitor(IFeature):
             if 'roles' in cmd:
                 roles = filter(lambda role: role.name in cmd['roles'], message.author.roles)
                 if not all(role.name in cmd['roles'] for role in roles):
-                    await message.author.send("No role")
+                    await message.author.send("No permissions")
                     await message.delete()
                     return
 
+            args = []
             if 'parameters' in cmd:
-                if type(cmd['parameters']) is int:
-                    if len(msg) - 1 < cmd['parameters']:
-                        await message.author.send(f"Usage: {cmd['usage']}")
-                        await message.delete()
-                        return
-                else:
-                    if cmd['parameters']['min'] < (len(msg) - 1) < cmd['parameters']['max']:
-                        await message.author.send(f"Usage: {cmd['usage']}")
-                        await message.delete()
-                        return
-
-            await cmd['func'](message, msg[1:])
+                param_zip = zip_longest(msg[1:], cmd['parameters'])
+                try:
+                    for arg, param in param_zip:
+                        if type(param) is not OptionalArg and arg is None:
+                            raise Exception()
+                        args.append(param(arg))
+                except:
+                    await message.author.send(f"Usage: {cmd['usage']}")
+                    await message.delete()
+                    return
+            await cmd['func'](message, *args)
     
-    async def purge(self, message, msg):
-        try:
-            lines = int(msg[0])
-        except:
-            await message.author.send("Usage: .purge <no_lines>")
-            await message.delete()
-            return
-        await message.channel.purge(limit=lines+1)
+    async def purge(self, message, lim):
+        await message.channel.purge(limit=lim+1)
 
-    async def reactw(self, message, msg):
-        if not all(c.upper() >= 'A' and c.upper() <= 'Z' for c in msg[0]):
+    async def reactw(self, message, word, msg_offset):
+        if not all(c.upper() >= 'A' and c.upper() <= 'Z' for c in word):
             await message.author.send(f"Word has to be [A-Z]+")
             await message.delete()
             return
-        msg_no = 1
-        if len(msg) == 2:
-            try:
-                msg_no = int(msg[1])
-            except:
-                pass
-        history = await message.channel.history(limit=msg_no+1).flatten()
+        history = await message.channel.history(limit=msg_offset+1).flatten()
         if len(history) <= 1:
             await message.delete()
             return
         await message.delete()
-        react_msg = history[msg_no]
+        react_msg = history[msg_offset]
         A = ord('\U0001F1E6')
-        for char in msg[0]:
+        for char in word:
             await react_msg.add_reaction(chr(A + (ord(char.upper()) - ord('A'))))

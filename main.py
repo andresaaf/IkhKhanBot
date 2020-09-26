@@ -4,6 +4,7 @@ import asyncio
 from TempVoiceChat import TempVoiceChat
 from ChatJanitor import ChatJanitor
 from AudioPlayer import AudioPlayer
+from EventSignup import EventSignup
 
 class IKUBot(discord.Client):
     def __init__(self):
@@ -17,7 +18,8 @@ class IKUBot(discord.Client):
         self.features = [
             TempVoiceChat(self),
             ChatJanitor(self),
-            AudioPlayer(self)
+            AudioPlayer(self),
+            EventSignup(self)
         ]
         for feature in self.features:
             await feature.on_ready()
