@@ -13,6 +13,9 @@ class IFeature:
     async def on_message(self, message):
         pass
 
+    async def on_message_edit(self, before, after):
+        pass
+
     async def on_voice_state_update(self, member, before, after):
         pass
 
