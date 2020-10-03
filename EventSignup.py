@@ -34,6 +34,12 @@ class EventSignup(IFeature):
                 else:
                     await self.create(message)
 
+    async def on_message_edit(self, before, after):
+        for event in self.events:
+            if event.template.id == before.id:
+                await self.create(after)
+                break
+
     async def on_reaction_add(self, reaction, user):
         for event in self.events:
             if event.message.id == reaction.message.id:
@@ -71,6 +77,9 @@ class EventSignup(IFeature):
         event.template = message
         msg = message.content.split('\n')[1:] # Trim first line
 
+        # Remove potential > in message lines
+        msg = list(map(lambda line: line.lstrip('> '), msg))
+                
         # Parse
         event.mentions = msg[0]
         event.title = msg[1]
@@ -107,7 +116,7 @@ class EventSignup(IFeature):
                     if react.emoji == self.react:
                         reacts = await react.users().flatten()
 
-                signups = filter(lambda user: not user.bot, reacts)
+                signups = list(filter(lambda user: not user.bot, reacts))
 
                 i = 0
                 val = ""
@@ -121,7 +130,7 @@ class EventSignup(IFeature):
                         val += '\t'
                 if val == "":
                     val = '-'
-                msg.add_field(name="Sign-ups", value=f"```{val}```", inline=False)
+                msg.add_field(name=f"Sign-ups: {len(signups)}", value=f"```{val}```", inline=False)
                 await self.message.edit(content=self.mentions, embed=msg)
             else:
                 self.message = await self.channel.send(content=self.mentions, embed=msg)
