@@ -25,7 +25,7 @@ class EventSignup(IFeature):
         pass
 
     async def on_message(self, message):
-        msg = message.content.split('\n')
+        msg = message.content.lstrip(' \t\r\n').split('\n')
         line1 = msg[0].split(' ')
         if line1[0] == ".event":
             if line1[1] == "create":
