@@ -37,14 +37,19 @@ class EventSignup(IFeature):
     async def on_reaction_add(self, reaction, user):
         for event in self.events:
             if event.message.id == reaction.message.id:
-                await event.send()
+                if reaction.emoji != event.react:
+                    await reaction.remove(user)
+                    break
+                if not user.bot:
+                    await event.send()
                 break
 
     async def on_reaction_remove(self, reaction, user):
         for event in self.events:
             if event.message.id == reaction.message.id:
-                await event.send()
-                break
+                if reaction.emoji == event.react:
+                    await event.send()
+                    break
 
     #endregion Events
 
@@ -67,7 +72,7 @@ class EventSignup(IFeature):
         msg = message.content.split('\n')[1:] # Trim first line
 
         # Parse
-        #mentions = msg[0]
+        event.mentions = msg[0]
         event.title = msg[1]
         event.descr = '\n'.join(msg[2:len(msg)-1])
         event.react = msg[-1]
@@ -83,6 +88,7 @@ class EventSignup(IFeature):
             self.descr = kwargs.get('descr', "Description")
             self.react = kwargs.get('react', "\U0001F1E6") # Reaction to respond to event
             self.message = None
+            self.mentions = ""
             self.timestamp = datetime.datetime.now()
 
         async def send(self):
@@ -113,8 +119,10 @@ class EventSignup(IFeature):
                         i = 0
                     else:
                         val += '\t'
-                msg.add_field(name="Sign-ups", value=val or "-", inline=False)
-                await self.message.edit(embed=msg)
+                if val == "":
+                    val = '-'
+                msg.add_field(name="Sign-ups", value=f"```{val}```", inline=False)
+                await self.message.edit(content=self.mentions, embed=msg)
             else:
-                self.message = await self.channel.send(embed=msg)
+                self.message = await self.channel.send(content=self.mentions, embed=msg)
                 await self.message.add_reaction(self.react)

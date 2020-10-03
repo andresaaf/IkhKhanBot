@@ -37,14 +37,10 @@ class IKUBot(discord.Client):
             await feature.on_message_edit(before, after)
 
     async def on_reaction_add(self, reaction, user):
-        if user.bot:
-            return
         for feature in self.features:
             await feature.on_reaction_add(reaction, user)
 
     async def on_reaction_remove(self, reaction, user):
-        if user.bot:
-            return
         for feature in self.features:
             await feature.on_reaction_remove(reaction, user)
 
