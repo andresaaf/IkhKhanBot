@@ -38,7 +38,7 @@ class TempVoiceChat(IFeature):
 
     async def create_temp_voice(self, member):
         channel_name = f"{self.channel_names[random.randrange(0, len(self.channel_names))]}"
-        new_channel = await self.category.create_voice_channel(channel_name, bitrate=128000) # TODO: Fetch max bitrate
+        new_channel = await self.category.create_voice_channel(channel_name, bitrate=256000) # TODO: Fetch max bitrate
         await member.move_to(new_channel)
 
     async def remove_unused_channels(self):
