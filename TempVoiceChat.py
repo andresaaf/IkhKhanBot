@@ -64,6 +64,7 @@ class TempVoiceChat(IFeature):
                         self.names[message.guild.id] = []
                     else:
                         db.execute("UPDATE TempVoiceChat SET category = ?, monitor = ? WHERE guild = ?", (category.id, monitor.id, message.guild.id))
+                self.monitor_channels[message.guild.id] = [category.id, monitor.id]
             elif msg[1] == 'add':
                 if len(msg) < 3:
                     await message.author.send("Usage: .voice add <temp channel name>")
