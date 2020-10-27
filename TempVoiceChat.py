@@ -2,46 +2,120 @@ from IFeature import IFeature
 import discord
 import random
 
+# TODO: Remove monitor?
+DB_CREATE = """CREATE TABLE IF NOT EXISTS TempVoiceChat (
+    guild integer PRIMARY KEY,
+    category integer NOT NULL,
+    monitor integer NOT NULL
+);"""
+
+DB_CREATE_NAMES = """CREATE TABLE IF NOT EXISTS TempVoiceChat_Names (
+    guild integer NOT NULL,
+    name text NOT NULL,
+    unique (guild, name)
+);"""
+
 class TempVoiceChat(IFeature):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.channel_names = [
-            "Floravägen ASMR",
-            "MaintenanceStory",
-            "Lönnhistoria",
-            "Albins gråthörna",
-            "#BLM sometimes when convenient",
-            "Robins batongliga",
-            "Nickes snarkhörna",
-            "Albins snarkhörna",
-            "Sommaranalen",
-            "Willes AFK & Alkoholism",
-            "Anonyma Kitavaister"
-        ]
+
+        with self.client.db as db:
+            db.execute(DB_CREATE)
+            db.execute(DB_CREATE_NAMES)
+
+            db.execute("SELECT guild, category, monitor FROM TempVoiceChat")
+            self.monitor_channels = { row[0] : [row[1], row[2]] for row in db.fetchall() }
+
+            db.execute("SELECT guild, name FROM TempVoiceChat_Names")
+            self.names = { g : [] for g in self.monitor_channels.keys() }
+            for row in db.fetchall():
+                self.names[row[0]] = [row[1]] + (self.names[row[0]] or [])
 
     async def cleanup(self):
         pass
 
+    async def on_message(self, message):
+        msg = message.content.split(' ')
+        if len(msg) > 1 and msg[0] == '.voice':
+            # Check permission
+            if not getattr(message.author.permissions_in(message.channel), 'manage_messages'):
+                await message.author.send("No permission")
+                return
+
+            if msg[1] == 'set':
+                if len(msg) < 3:
+                    await message.author.send("Usage: .voice set <category name>")
+                    return
+                category_name = (" ".join(msg[2:])).strip(' \t\r\n')
+                print(message.guild.categories)
+                if not any(cat for cat in message.guild.categories if cat.name == category_name):
+                    await message.author.send("Category not found! Create it and run the command again")
+                    return
+                category = next(c for c in message.guild.categories if c.name == category_name)
+                if len(category.voice_channels) == 0:
+                    monitor = await category.create_voice_channel("New Temp Channel", bitrate=category.guild.bitrate_limit)
+                else:
+                    monitor = category.voice_channels[0]
+                with self.client.db as db:
+                    # TODO: Insert or replace?
+                    db.execute("SELECT guild, category, monitor FROM TempVoiceChat WHERE guild = ?", (message.guild.id,))
+                    if db.fetchone() is None:
+                        db.execute("INSERT INTO TempVoiceChat (guild, category, monitor) VALUES (?, ?, ?)", (message.guild.id, category.id, monitor.id))
+                    else:
+                        db.execute("UPDATE TempVoiceChat SET category = ?, monitor = ? WHERE guild = ?", (category.id, monitor.id, message.guild.id))
+            elif msg[1] == 'add':
+                if len(msg) < 3:
+                    await message.author.send("Usage: .voice add <temp channel name>")
+                    return
+                name = (" ".join(msg[2:])).strip(' \t\r\n')
+                with self.client.db as db:
+                    db.execute("INSERT INTO TempVoiceChat_Names ('guild', 'name') VALUES (?, ?)", (message.guild.id, name))
+                self.names[message.guild.id].append(name)
+            elif msg[1] == 'remove':
+                if len(msg) < 3:
+                    await message.author.send("Usage: .voice remove <temp channel name>")
+                    return
+                name = (" ".join(msg[2:])).strip(' \t\r\n')
+                with self.client.db as db:
+                    db.execute("DELETE FROM TempVoiceChat_Names WHERE guild = ? AND name = ?", (message.guild.id, name))
+                self.names[message.guild.id].remove(name)
+            elif msg[1] == 'list':
+                if len(self.names[message.guild.id]) > 0:
+                    await message.author.send("Name list:\n" + "\n".join(self.names[message.guild.id]))
+                else:
+                    await message.author.send("No channel names added.")
+
     async def on_ready(self):
-        self.category = discord.utils.find(lambda ch: ch.name == "Temp", self.client.guilds[0].categories)
-        self.create_channel = discord.utils.find(lambda ch: ch.name == "New Temp Channel", self.category.voice_channels)
-        await self.remove_unused_channels()
-        for member in self.create_channel.members:
-            await self.create_temp_voice(member)
+        for guild_id, channel in self.monitor_channels.items():
+            if any(g for g in self.client.guilds if g.id == guild_id):
+                g = next(g for g in self.client.guilds if g.id == guild_id)
+                category = g.get_channel(channel[0])
+                monitor_channel = g.get_channel(channel[1])
+                await self.remove_unused_channels(category, monitor_channel)
+                for member in monitor_channel.members:
+                    await self.create_temp_voice(category, member)
+            else:
+                print(f"Guild not found: {guild_id}. Monitor channel: {channel}")
 
     async def on_voice_state_update(self, member, before, after):
-        if after.channel and after.channel == self.create_channel:
-            await self.create_temp_voice(member)
-        if before.channel and before.channel.category == self.category and before.channel != self.create_channel:
-            if len(before.channel.members) == 0:
-                await before.channel.delete()
+        if after.channel and after.channel.guild.id in self.monitor_channels:
+            monitor_channel = self.monitor_channels[after.channel.guild.id][1]
+            if after.channel.id == monitor_channel:
+                await self.create_temp_voice(after.channel.category, member)
+        if before.channel and before.channel.guild.id in self.monitor_channels:
+            category = self.monitor_channels[before.channel.guild.id][0]
+            monitor_channel = self.monitor_channels[before.channel.guild.id][1]
+            if before.channel.category.id == category and before.channel.id != monitor_channel:
+                if len(before.channel.members) == 0:
+                    await before.channel.delete()
 
-    async def create_temp_voice(self, member):
-        channel_name = f"{self.channel_names[random.randrange(0, len(self.channel_names))]}"
-        new_channel = await self.category.create_voice_channel(channel_name, bitrate=256000) # TODO: Fetch max bitrate
-        await member.move_to(new_channel)
+    async def create_temp_voice(self, category, member):
+        if len(self.names[category.guild.id]) > 0:
+            channel_name = f"{self.names[category.guild.id][random.randrange(0, len(self.names[category.guild.id]))]}"
+            new_channel = await category.create_voice_channel(channel_name, bitrate=category.guild.bitrate_limit)
+            await member.move_to(new_channel)
 
-    async def remove_unused_channels(self):
-        for ch in filter(lambda channel: channel != self.create_channel, self.category.voice_channels):
+    async def remove_unused_channels(self, category, monitor_channel):
+        for ch in filter(lambda channel: channel != monitor_channel, category.voice_channels):
             if len(ch.members) == 0:
                 await ch.delete()

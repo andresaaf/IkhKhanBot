@@ -1,25 +1,30 @@
 import discord
 import asyncio
+from Database import Database
 
 from TempVoiceChat import TempVoiceChat
 from ChatJanitor import ChatJanitor
 from AudioPlayer import AudioPlayer
 from EventSignup import EventSignup
+from ReactForRoles import ReactForRoles
+from Database import Database
 
 class IKUBot(discord.Client):
     def __init__(self):
         super().__init__()
         self.features = []
-        
+        self.db = Database()
 
     async def on_ready(self):
         print(f'Connected. Username: {self.user.name} | ID: {self.user.id}')
+
         # TODO: Make this better
         self.features = [
             TempVoiceChat(self),
             ChatJanitor(self),
             AudioPlayer(self),
-            EventSignup(self)
+            EventSignup(self),
+            #ReactForRoles(self)
         ]
         for feature in self.features:
             await feature.on_ready()
