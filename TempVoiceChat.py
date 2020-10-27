@@ -61,6 +61,7 @@ class TempVoiceChat(IFeature):
                     db.execute("SELECT guild, category, monitor FROM TempVoiceChat WHERE guild = ?", (message.guild.id,))
                     if db.fetchone() is None:
                         db.execute("INSERT INTO TempVoiceChat (guild, category, monitor) VALUES (?, ?, ?)", (message.guild.id, category.id, monitor.id))
+                        self.names[message.guild.id] = []
                     else:
                         db.execute("UPDATE TempVoiceChat SET category = ?, monitor = ? WHERE guild = ?", (category.id, monitor.id, message.guild.id))
             elif msg[1] == 'add':
