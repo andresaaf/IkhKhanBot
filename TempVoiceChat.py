@@ -100,10 +100,13 @@ class TempVoiceChat(IFeature):
                 print(f"Guild not found: {guild_id}. Monitor channel: {channel}")
 
     async def on_voice_state_update(self, member, before, after):
+        # Create new channel if member moves to monitor channel
         if after.channel and after.channel.guild.id in self.monitor_channels:
             monitor_channel = self.monitor_channels[after.channel.guild.id][1]
             if after.channel.id == monitor_channel:
                 await self.create_temp_voice(after.channel.category, member)
+
+        # Remove old channel if member is last in a temp channel
         if before.channel and before.channel.guild.id in self.monitor_channels:
             category = self.monitor_channels[before.channel.guild.id][0]
             monitor_channel = self.monitor_channels[before.channel.guild.id][1]

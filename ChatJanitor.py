@@ -1,6 +1,8 @@
 from IFeature import IFeature
 import discord
 from itertools import zip_longest
+from six.moves import urllib
+from bs4 import BeautifulSoup
 
 class OptionalArg:
     def __init__(self, T, default):
@@ -26,6 +28,11 @@ class ChatJanitor(IFeature):
                 'parameters' : [ str, OptionalArg(int, 1) ],
                 'func' : self.reactw
             },
+            'MAT' : {
+                'usage' : 'MAT',
+                'parameters' : [],
+                'func' : self.mat
+            }
         }
 
     async def on_message(self, message):
@@ -75,3 +82,41 @@ class ChatJanitor(IFeature):
         A = ord('\U0001F1E6')
         for char in word:
             await react_msg.add_reaction(chr(A + (ord(char.upper()) - ord('A'))))
+
+    async def mat(self, message):
+        message = await message.channel.send(embed=self.mat_plz())
+        await message.add_reaction("🔄")
+        await message.add_reaction("🌿")
+
+    async def on_reaction_add(self, reaction, user):
+        if user.bot:
+            return
+        if reaction.message.author.id == self.client.user.id and len(reaction.message.embeds) == 1:
+            if reaction.message.embeds[0].title == "Du kan väl för fan laga lite":
+                await reaction.remove(user)
+
+                if reaction.emoji == "🔄": # Refresh
+                    vego = not any([True for react in reaction.message.reactions if react.emoji == "🌿"])
+                    await reaction.message.edit(embed=self.mat_plz(vego))
+                elif reaction.emoji == "🌿": # vego
+                    await reaction.message.edit(embed=self.mat_plz(True))
+                    await reaction.message.remove_reaction("🌿", self.client.user)
+                    await reaction.message.add_reaction("🍖")
+                elif reaction.emoji == "🍖": # MEAT
+                    await reaction.message.edit(embed=self.mat_plz(False))
+                    await reaction.message.remove_reaction("🍖", self.client.user)
+                    await reaction.message.add_reaction("🌿")
+                else:
+                    pass
+
+    def mat_plz(self, vego=False):
+        url = "https://vadfanskajaglagatillmiddag.nu/" + ("vegetariskt" if vego else "")
+        read = BeautifulSoup(urllib.request.urlopen(url).read(), "html.parser")
+        mat = read.body.find('div', attrs={'class':'wpb_content_element'}).find('a')
+        embed = discord.Embed(
+                title="Du kan väl för fan laga lite",
+                description=f"[{mat.text}]({mat.get('href')})",
+                color=0xf09767
+            )
+        embed.set_author(name="🌿" if vego else "🍖")
+        return embed

@@ -9,7 +9,7 @@ class AudioPlayer(IFeature):
         pass
 
     async def on_ready(self):
-        print("AudioPlayer ready")
+        pass
 
     async def on_message(self, message):
         pass
