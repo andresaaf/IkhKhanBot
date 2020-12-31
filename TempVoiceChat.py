@@ -1,7 +1,6 @@
 from IFeature import IFeature
 import discord
 import random
-from multiprocessing import Lock
 
 # TODO: Remove monitor?
 DB_CREATE = """CREATE TABLE IF NOT EXISTS TempVoiceChat (
@@ -19,8 +18,6 @@ DB_CREATE_NAMES = """CREATE TABLE IF NOT EXISTS TempVoiceChat_Names (
 class TempVoiceChat(IFeature):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.mutex = Lock()
 
         with self.client.db as db:
             db.execute(DB_CREATE)
@@ -103,20 +100,22 @@ class TempVoiceChat(IFeature):
                 print(f"Guild not found: {guild_id}. Monitor channel: {channel}")
 
     async def on_voice_state_update(self, member, before, after):
-        with self.mutex:
-            # Create new channel if member moves to monitor channel
-            if after.channel and after.channel.guild.id in self.monitor_channels:
-                monitor_channel = self.monitor_channels[after.channel.guild.id][1]
-                if after.channel.id == monitor_channel:
-                    await self.create_temp_voice(after.channel.category, member)
+        if before.channel is not None and after.channel is not None and before.channel.id == after.channel.id:
+            return
 
-            # Remove old channel if member is last in a temp channel
-            if before.channel and before.channel.guild.id in self.monitor_channels:
-                category = self.monitor_channels[before.channel.guild.id][0]
-                monitor_channel = self.monitor_channels[before.channel.guild.id][1]
-                if before.channel.category.id == category and before.channel.id != monitor_channel:
-                    if len(before.channel.members) == 0:
-                        await before.channel.delete()
+        # Create new channel if member moves to monitor channel
+        if after.channel is not None and after.channel.guild.id in self.monitor_channels:
+            monitor_channel = self.monitor_channels[after.channel.guild.id][1]
+            if after.channel.id == monitor_channel:
+                await self.create_temp_voice(after.channel.category, member)
+
+        # Remove old channel if member is last in a temp channel
+        if before.channel is not None and before.channel.guild.id in self.monitor_channels:
+            category = self.monitor_channels[before.channel.guild.id][0]
+            monitor_channel = self.monitor_channels[before.channel.guild.id][1]
+            if before.channel.category.id == category and before.channel.id != monitor_channel:
+                if len(before.channel.members) == 0:
+                    await before.channel.delete()
 
     async def create_temp_voice(self, category, member):
         if len(self.names[category.guild.id]) > 0:
