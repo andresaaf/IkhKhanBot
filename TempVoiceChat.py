@@ -100,28 +100,20 @@ class TempVoiceChat(IFeature):
                 print(f"Guild not found: {guild_id}. Monitor channel: {channel}")
 
     async def on_voice_state_update(self, member, before, after):
-        if before.channel is not None and after.channel is not None and before.channel.id == after.channel.id:
-            return
-
-        # Create new channel if member moves to monitor channel
         if after.channel is not None and after.channel.guild.id in self.monitor_channels:
             monitor_channel = self.monitor_channels[after.channel.guild.id][1]
             if after.channel.id == monitor_channel:
-                await self.create_temp_voice(after.channel.category, member)
-
-        # Remove old channel if member is last in a temp channel
-        if before.channel is not None and before.channel.guild.id in self.monitor_channels:
-            category = self.monitor_channels[before.channel.guild.id][0]
-            monitor_channel = self.monitor_channels[before.channel.guild.id][1]
-            if before.channel.category.id == category and before.channel.id != monitor_channel:
-                if len(before.channel.members) == 0:
-                    await before.channel.delete()
+                new_channel = await self.create_temp_voice(after.channel.category, member)
+                await self.client.wait_for('voice_state_update', check=lambda _1,_2,_3: len(new_channel.members) == 0)
+                await new_channel.delete()
 
     async def create_temp_voice(self, category, member):
         if len(self.names[category.guild.id]) > 0:
             channel_name = f"{self.names[category.guild.id][random.randrange(0, len(self.names[category.guild.id]))]}"
             new_channel = await category.create_voice_channel(channel_name, bitrate=category.guild.bitrate_limit)
             await member.move_to(new_channel)
+            return new_channel
+        return None
 
     async def remove_unused_channels(self, category, monitor_channel):
         for ch in filter(lambda channel: channel != monitor_channel, category.voice_channels):
