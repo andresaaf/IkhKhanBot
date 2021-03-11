@@ -6,7 +6,7 @@ from TempVoiceChat import TempVoiceChat
 from ChatJanitor import ChatJanitor
 from AudioPlayer import AudioPlayer
 from EventSignup import EventSignup
-#from ReactForRoles import ReactForRoles
+from ReactForRoles import ReactForRoles
 from Database import Database
 
 class IKUBot(discord.Client):
@@ -21,7 +21,7 @@ class IKUBot(discord.Client):
             ChatJanitor(self),
             AudioPlayer(self),
             EventSignup(self),
-            #ReactForRoles(self)
+            ReactForRoles(self)
         ]
 
     async def on_ready(self):
@@ -43,11 +43,23 @@ class IKUBot(discord.Client):
         for feature in self.features:
             await feature.on_message_edit(before, after)
 
+    async def on_raw_reaction_add(self, payload):
+        if payload.user_id == self.user.id:
+            return
+        for feature in self.features:
+            await feature.on_raw_reaction_add(payload)
+
     async def on_reaction_add(self, reaction, user):
         if user.bot:
             return
         for feature in self.features:
             await feature.on_reaction_add(reaction, user)
+
+    async def on_raw_reaction_remove(self, payload):
+        if payload.user_id == self.user.id:
+            return
+        for feature in self.features:
+            await feature.on_raw_reaction_remove(payload)
 
     async def on_reaction_remove(self, reaction, user):
         if user.bot:

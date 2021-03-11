@@ -19,8 +19,12 @@ class IFeature:
     async def on_voice_state_update(self, member, before, after):
         pass
 
+    async def on_raw_reaction_add(self, paylod):
+        pass
     async def on_reaction_add(self, reaction, user):
         pass
 
+    async def on_raw_reaction_remove(self, payload):
+        pass
     async def on_reaction_remove(self, reaction, user):
         pass
