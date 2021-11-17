@@ -7,7 +7,7 @@ from ChatJanitor import ChatJanitor
 from AudioPlayer import AudioPlayer
 from EventSignup import EventSignup
 from ReactForRoles import ReactForRoles
-from Database import Database
+from MapleStory import MapleStory
 
 class IKUBot(discord.Client):
     def __init__(self):
@@ -21,7 +21,8 @@ class IKUBot(discord.Client):
             ChatJanitor(self),
             AudioPlayer(self),
             EventSignup(self),
-            ReactForRoles(self)
+            ReactForRoles(self),
+            MapleStory(self)
         ]
 
     async def on_ready(self):
