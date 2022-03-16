@@ -31,7 +31,7 @@ class MapleStory(IFeature):
         msg = await channel.send(None, embed=emb)
         while not await checker.check(MaintenanceCheck.servers['EMS']['Reboot'][0]):
             emb.color=0xE74C3C
-            emb.description="Offline"
+            emb.description="Offline\nRefreshing in 10..."
             await msg.edit(embed=emb)
             await asyncio.sleep(10)
         

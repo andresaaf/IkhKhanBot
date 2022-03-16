@@ -8,6 +8,7 @@ from AudioPlayer import AudioPlayer
 from EventSignup import EventSignup
 from ReactForRoles import ReactForRoles
 from MapleStory import MapleStory
+from GambaRollers import GambaRollers
 
 class IKUBot(discord.Client):
     def __init__(self):
@@ -22,7 +23,8 @@ class IKUBot(discord.Client):
             AudioPlayer(self),
             EventSignup(self),
             ReactForRoles(self),
-            MapleStory(self)
+            MapleStory(self),
+            GambaRollers(self)
         ]
 
     async def on_ready(self):
