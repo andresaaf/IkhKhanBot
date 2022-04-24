@@ -51,7 +51,7 @@ class GambaRollers(IFeature):
         return embed
 
     def user_roll(self, userlist):
-        rollers = [[user, [random.randint(1, 2)]] for user in userlist] # [[user, [roll, roll...]], ...]
+        rollers = [[user, [random.randint(1, 100)]] for user in userlist] # [[user, [roll, roll...]], ...]
         max_roll = 0
         num_active = 0
 
@@ -75,7 +75,7 @@ class GambaRollers(IFeature):
         while num_active > 1:
             for roller in rollers:
                 if len(roller[1]) == roll_cnt and roller[1][-1] == max_roll:
-                    roller[1].append(random.randint(1, 2))
+                    roller[1].append(random.randint(1, 100))
             roll_cnt += 1
             update()
 
