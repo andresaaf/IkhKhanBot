@@ -51,21 +51,48 @@ class GambaRollers(IFeature):
         return embed
 
     def user_roll(self, userlist):
-        rolls = []
-        descr = ""
-        winner = None
+        rollers = [[user, [random.randint(1, 2)]] for user in userlist] # [[user, [roll, roll...]], ...]
         max_roll = 0
-        for user in userlist:
-            roll = random.randint(1, 100)
-            while roll in rolls:
-                roll = random.randint(1, 100)
-            if roll > max_roll:
-                max_roll = roll
-                winner = user
-            rolls.append(roll)
-            descr += f"{roll}\t{user.mention}\n"
+        num_active = 0
+
+        def update():
+            nonlocal max_roll
+            nonlocal num_active
+            num_active = 0
+            max_roll = 0
+            for roller in rollers:
+                roll = roller[1][-1]
+                if roll > max_roll:
+                    max_roll = roll
+                    num_active = 1
+                elif roll == max_roll:
+                    num_active += 1
+
+        update()
+
+        roll_cnt = 1
+
+        while num_active > 1:
+            for roller in rollers:
+                if len(roller[1]) == roll_cnt and roller[1][-1] == max_roll:
+                    roller[1].append(random.randint(1, 2))
+            roll_cnt += 1
+            update()
+
+        winner = None
+        for roller in rollers:
+            if len(roller[1]) == roll_cnt and roller[1][-1] == max_roll:
+                winner = roller
+                break
+        assert(winner is not None)
+
+        descr = ""
+        for user, rolls in rollers:
+            for roll in rolls[:-1]:
+                descr += f"~~{roll}~~ "
+            descr += f"**{rolls[-1]}**\t{user.mention}\n"
         
-        descr += f"\nWinner winner chicker dinner: {winner.mention}"
+        descr += f"\nWinner winner chicker dinner: {winner[0].mention}"
         
         embed = discord.Embed(
                 title="GAMBA ROLL",
