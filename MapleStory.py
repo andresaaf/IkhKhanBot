@@ -1,72 +1,69 @@
 from IFeature import IFeature
 import discord
 
-import os
-import time
-import asyncio
-import requests
-import functools
-import urllib3
+import calendar
+import datetime
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
+DB_CREATE = """CREATE TABLE IF NOT EXISTS MapleReminder (
+    guild integer PRIMARY KEY,
+    channel integer NOT NULL
+);"""
 
 class MapleStory(IFeature):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    async def on_ready(self):
+        self.skip_once = False
+        self.watch = dict()
+        with self.client.db as db:
+            db.execute(DB_CREATE)
+
+            db.execute("SELECT guild, channel FROM MapleReminder")
+            for row in db.fetchall():
+                self.watch[row[0]] = row[1]
+
+        # Start shceduler
+        self.scheduler = AsyncIOScheduler()
+        self.scheduler.add_job(self.run_end_of_month_check, IntervalTrigger(seconds=50))
+        self.scheduler.start()
+
     async def on_message(self, message):
         msg = message.content.split(' ')
-        if len(msg) > 1 and msg[0] == '.maple':
-            await message.delete()
+        if msg[0] == '.maple':
+            if msg[1] == 'set_totem_channel':
+                self.watch[message.guild.id] = message.channel.id
+                with self.client.db as db:
+                    try:
+                        db.execute("INSERT INTO MapleReminder (guild, channel) VALUES (?, ?)", (message.guild.id, message.channel.id))
+                    except:
+                        pass
+                await message.author.send("Registered channel")
+                await message.delete()
+            elif msg[1] == 'remove_totem_channel':
+                with self.client.db as db:
+                    try:
+                        db.execute("DELETE FROM MapleReminder WHERE guild = ? AND channel = ?", (message.guild.id, self.watch[message.guild.id]))
+                    except:
+                        pass
+                await message.author.send("Removed channel")
+                await message.delete()
 
-            if msg[1] == 'maintenance':
-                await self.check_maintenance(message.channel)
+    async def run_end_of_month_check(self):
+        if self.skip_once:
+            self.skip_once = False
+            return
 
-    async def check_maintenance(self, channel):
-        checker = MaintenanceCheck()
-        emb = discord.Embed(
-            title="EMS Reboot",
-            description="Checking connection...",
-            color=0xE67E22
-        )
-        msg = await channel.send(None, embed=emb)
-        while not await checker.check(MaintenanceCheck.servers['EMS']['Reboot'][0]):
-            emb.color=0xE74C3C
-            emb.description="Offline\nRefreshing in 10..."
-            await msg.edit(embed=emb)
-            await asyncio.sleep(10)
-        
-        emb.color=0x2ECC71
-        emb.description="Online"
-        await msg.edit(embed=emb)
-        await channel.send(f"@here EMS Reboot is back up!")
-
-class MaintenanceCheck:
-    servers = {
-        'EMS': {
-            'Login': [{
-                'name': 'Login',
-                'address': '18.196.14.103',
-                'port': '8484'
-            }],
-            'Reboot': [{
-                'name' : 'Channel 1',
-                'address' : '8.31.99.161',
-                'port' : '8585'
-            }],
-        },
-    }
-
-    def __init__(self):
-        pass
-
-    async def check(self, server):
-        try:
-            future1 = asyncio.get_event_loop().run_in_executor(None, functools.partial(requests.get, data={
-                'timeout': 5
-            }), f"http://{server['address']}:{server['port']}")
-            await future1
-        except Exception as ex:
-            if type(ex) == requests.exceptions.ConnectTimeout or type(ex.args[0]) == urllib3.exceptions.MaxRetryError:
-                return False
-        return True
-
+        # Last day of month?
+        now = datetime.datetime.now()
+        if now.day == calendar.monthrange(now.year, now.month)[1]:
+            # Fire at 12:00 and 18:00
+            if now.minute == 0 and (now.hour == 12 or now.hour == 20):
+                self.skip_once = True
+                for guild, channel in self.watch.items():
+                    try:
+                        await self.client.get_guild(guild).get_channel(channel).send("@everyone Don't forget to buy your totems! Last day")
+                    except:
+                        pass
