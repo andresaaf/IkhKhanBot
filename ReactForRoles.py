@@ -113,7 +113,7 @@ class ReactForRoles(IFeature):
                 continue
 
             ch = guild.get_channel(channel_id)
-            messages = await ch.history().flatten()
+            messages = [m async for m in ch.history()]
             message = None
             for msg in messages:
                 if len(msg.embeds) == 1 and msg.embeds[0].title == "React for roles":
@@ -166,7 +166,7 @@ class ReactForRoles(IFeature):
         return None
 
     def get_list(self, descr):
-        if descr == discord.Embed.Empty:
+        if descr is None:
             return []
         else:
             return descr.split('\n')
