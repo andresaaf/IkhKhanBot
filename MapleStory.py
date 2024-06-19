@@ -3,7 +3,7 @@ import discord
 from discord.ext import tasks
 import threading
 import socket
-import asyncio
+import datetime
 
 DB_CREATE = """CREATE TABLE IF NOT EXISTS MapleStory (
     guild integer PRIMARY KEY,
@@ -12,6 +12,7 @@ DB_CREATE = """CREATE TABLE IF NOT EXISTS MapleStory (
 );"""
 
 maple_mvps = []
+MAX_FILE_SIZE = 32768
 
 def recv_thread():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serversocket:
@@ -22,11 +23,19 @@ def recv_thread():
             conn, addr = serversocket.accept()
             buf = ""
             with conn:
-                conn.settimeout(1.0)
+                conn.settimeout(5.0)
                 try:
                     buf = conn.recv(1024)
-                except:
-                    pass
+                    imgbuf = bytes()
+                    recv = conn.recv(4096)
+                    while len(recv) > 0 and len(imgbuf) < MAX_FILE_SIZE:
+                        imgbuf += recv
+                        recv = conn.recv(4096)
+                    file = open('mvp/mvp.png', 'wb')
+                    file.write(imgbuf)
+                    file.close()
+                except Exception as ex:
+                    print(ex)
                 conn.close()
             if len(buf) > 0:
                 buf = buf.decode()
@@ -75,4 +84,14 @@ class MapleStory(IFeature):
                 print(f"Maple> Error! Channel not found: {data[1]}")
                 continue
             spl = mvp.split('|')
-            await ch.send(f'<@&{data[1]}> MVP Detected: xx:{spl[1]} ch{spl[2]}. Sent at [{spl[0]}]. ({spl[3:]})')
+
+            embed = discord.Embed(title="MVP Detected",
+                      description=f"xx:{spl[1]} ch{spl[2]}",
+                      colour=0x00b0f4,
+                      timestamp=datetime.datetime.now())
+
+            file = discord.File('mvp/mvp.png', filename='mvp.png')
+            embed.set_image(url="attachment://mvp.png")
+
+            embed.set_footer(text="IkhKhanBot")
+            await ch.send(f'<@&{data[1]}>', file=file, embed=embed)
