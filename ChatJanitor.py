@@ -19,7 +19,7 @@ class ChatJanitor(IFeature):
         self.cmds = {
             '.purge' : {
                 'usage' : '.purge [no_lines=1]',
-                'permissions' : [ 'manage_messages' ],
+                'permissions' : [ discord.Permissions.manage_messages ],
                 'parameters' : [ OptionalArg(int, 1) ],
                 'func' : self.purge
             },
@@ -39,7 +39,8 @@ class ChatJanitor(IFeature):
         msg = message.content.split(' ')
         if msg[0] in self.cmds:
             cmd = self.cmds[msg[0]]
-            if 'permissions' in cmd and not all(getattr(message.author.permissions_in(message.channel), perm) for perm in cmd['permissions']):
+            user_permissions = message.channel.permissions_for(message.author)
+            if 'permissions' in cmd and not all((user_permissions & perm) for perm in cmd['permissions']):
                 await message.author.send("No permissions")
                 await message.delete()
                 return
