@@ -40,7 +40,7 @@ class ChatJanitor(IFeature):
         if msg[0] in self.cmds:
             cmd = self.cmds[msg[0]]
             user_permissions = message.channel.permissions_for(message.author)
-            if 'permissions' in cmd and not all((user_permissions & perm) for perm in cmd['permissions']):
+            if 'permissions' in cmd and not all((user_permissions.value & perm.flag) for perm in cmd['permissions']):
                 await message.author.send("No permissions")
                 await message.delete()
                 return
