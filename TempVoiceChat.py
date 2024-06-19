@@ -38,7 +38,8 @@ class TempVoiceChat(IFeature):
         msg = message.content.split(' ')
         if len(msg) > 1 and msg[0] == '.voice':
             # Check permission
-            if not getattr(message.author.permissions_in(message.channel), 'manage_messages'):
+            user_permissions = message.channel.permissions_for(message.author)
+            if not user_permissions.manage_messages:
                 await message.author.send("No permission")
                 return
 
