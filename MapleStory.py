@@ -75,4 +75,4 @@ class MapleStory(IFeature):
                 print(f"Maple> Error! Channel not found: {data[1]}")
                 continue
             spl = mvp.split('|')
-            await ch.send(f'<@&{data[1]}> MVP Detected: xx:{spl[1]} ch{spl[2]}. Sent at [{spl[0]}]')
+            await ch.send(f'<@&{data[1]}> MVP Detected: xx:{spl[1]} ch{spl[2]}. Sent at [{spl[0]}]. ({spl[3:]})')
