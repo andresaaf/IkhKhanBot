@@ -85,13 +85,5 @@ class MapleStory(IFeature):
                 continue
             spl = mvp.split('|')
 
-            embed = discord.Embed(title="MVP Detected",
-                      description=f"xx:{spl[1]} ch{spl[2]}",
-                      colour=0x00b0f4,
-                      timestamp=datetime.datetime.now())
-
             file = discord.File('mvp/mvp.png', filename='mvp.png')
-            embed.set_image(url="attachment://mvp.png")
-
-            embed.set_footer(text="IkhKhanBot")
-            await ch.send(f'<@&{data[1]}>', file=file, embed=embed)
+            await ch.send(f'<@&{data[1]}> xx:{spl[1]} ch{spl[2]}', file=file)
